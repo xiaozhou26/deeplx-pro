@@ -27,7 +27,7 @@ npm install express body-parser axios lodash
 
 ## 使用方法
 
-F12打开开发者控制台，搜索``https://api.deepl.com/jsonrpc?method=LMT_handle_jobs``` 然后按照图片复制所有的cookie。
+F12打开开发者控制台，搜索```https://api.deepl.com/jsonrpc?method=LMT_handle_jobs``` 然后按照图片复制所有的cookie。
 ![DeepL翻译API示例代码](https://jsd.cdn.zzko.cn/gh/xiaozhou26/tuph@main/images/2024-03-06%20221503.png)
 
 
