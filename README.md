@@ -27,6 +27,10 @@ npm install express body-parser axios lodash
 
 ## 使用方法
 
+F12打开开发者控制台，搜索``https://api.deepl.com/jsonrpc?method=LMT_handle_jobs``` 然后按照图片复制所有的cookie。
+![DeepL翻译API示例代码](https://jsd.cdn.zzko.cn/gh/xiaozhou26/tuph@main/images/屏幕截图%202024-03-06%20221503.png)
+
+
 1. 替换代码中的 `cookie` 变量为你自己的 DeepL Pro cookie。
 2. 运行代码，启动 Express 服务器。
 3. 使用 POST 请求向 `http://localhost:9000/translate` 发送翻译请求，请求体包含以下字段：
