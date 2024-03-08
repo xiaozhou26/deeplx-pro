@@ -32,5 +32,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/deepl-pro:${{ github.ref_name }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/deepl-pro:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/deepl-pro-js:${{ github.ref_name }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/deepl-pro-js:latest
