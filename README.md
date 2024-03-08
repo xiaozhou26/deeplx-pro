@@ -3,7 +3,7 @@
 ## 安装部署
 
 ```bash
-docker run -d --name deeplx-pro -p 9000:9000 -e DL_SESSION="40ef9830-ced3-4f4b-b391-35b98479110f" xiaoxiaofeihh/deepl-pro:latest
+docker run -d --name deeplx-pro -p 9000:9000 -e DL_SESSION="40ef9830-ced3-4f4b-b391-35b98479110f" xiaoxiaofeihh/deeplx-pro:latest
 ```
 
 
