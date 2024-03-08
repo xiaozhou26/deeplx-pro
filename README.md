@@ -1,27 +1,11 @@
 # deeplx-pro
 
-# 使用 DeepL Pro的翻译服务
-
-DeepL 是一个优秀的翻译工具，提供了高质量的翻译结果。然而，它的免费版本有一定的限制。本文将介绍如何使用 DeepL Pro的 API 实现一个免费的翻译服务，并提供一个简单的 Express 服务器示例。
-
-## 准备工作
-
-在开始之前，你需要准备以下内容：
-
-- Node.js 环境
-- Express 框架
-- Axios 库
-- Lodash 库
-
-你可以通过以下命令安装所需的依赖：
+## 安装部署
 
 ```bash
-npm install express body-parser axios lodash
+docker run -d --name deeplx-pro -p 9000:9000 -e DL_SESSION="40ef9830-ced3-4f4b-b391-35b98479110f" ynlbq/deepl-pro:latest
 ```
 
-## 代码实现
-
-下面是使用 DeepL pro 实现api翻译服务的代码：
 
 
 
