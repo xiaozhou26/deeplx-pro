@@ -23,7 +23,7 @@ function getICount(translateText) {
 }
 
 function getRandomNumber() {
-  return random(8300000, 8399998) * 1000;
+  return Math.floor(Math.random() * 100000) + 83000000000;
 }
 
 function getTimestamp(iCount) {
@@ -100,6 +100,12 @@ const app = express();
 const PORT = 9000;
 
 app.use(bodyParser.json());
+app.get('/', (req, res) => {
+  res.send('Welcome to deeplx-pro');
+});
+app.get('/translate', (req, res) => {
+  res.send('This is a translate api');
+});
 
 app.post('/translate', async (req, res) => {
   const { text, source_lang, target_lang } = req.body;
