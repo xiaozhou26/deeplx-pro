@@ -1,5 +1,9 @@
 # deeplx-pro
 
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxiaozhou26%2Fdeeplx-pro&env=DL_SESSION&project-name=deeplx-pro&repository-name=deeplx-pro)
+
+
 ## 安装部署
 
 ```bash
