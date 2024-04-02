@@ -7,9 +7,10 @@
 ## 安装部署
 
 ```bash
-docker run -d --name deeplx-pro -p 9000:9000 -e DL_SESSION="你自己的cookie" xiaoxiaofeihh/deeplx-pro:latest
+docker run -d --name deeplx-pro -p 9000:9000 -e DEEPL_COOKIES="" xiaoxiaofeihh/deeplx-pro:latest
 ```
-
+DEEPL_COOKIES=你的dl_seesion值，用,隔开
+列如DEEPL_COOKIES=1560565165-1811-481,515156-561561-11651
 
 
 
