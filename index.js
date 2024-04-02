@@ -1,10 +1,27 @@
 const axios = require('axios').default;
-const { random } = require('lodash');
 const express = require('express');
 const bodyParser = require('body-parser');
+require('dotenv').config();
 
 const DEEPL_BASE_URL = 'https://api.deepl.com/jsonrpc';
-const headers = {
+const app = express();
+const PORT = process.env.PORT || 9000;
+
+// Cookies storage
+let cookies = process.env.DEEPL_COOKIES ? process.env.DEEPL_COOKIES.split(',') : [];
+
+let currentCookieIndex = 0;
+
+// Select the next cookie in a round-robin fashion
+function getNextCookie() {
+  const cookieValue = cookies[currentCookieIndex];
+  const cookie = `dl_session=${cookieValue}`; // 重新添加 "dl_session=" 前缀
+  currentCookieIndex = (currentCookieIndex + 1) % cookies.length;
+  return cookie;
+}
+
+// Basic headers template, excluding the cookie which will be dynamically inserted
+const baseHeaders = {
   'Content-Type': 'application/json',
   Accept: '*/*',
   'Accept-Language': 'en-US,en;q=0.9',
@@ -14,10 +31,11 @@ const headers = {
   'sec-fetch-dest': 'empty',
   'sec-fetch-mode': 'cors',
   'sec-fetch-site': 'same-site',
-  'cookie': `dl_session=${process.env.DL_SESSION}`, // 从环境变量中读取dl_session
   'Referer': 'https://www.deepl.com/',
   'Referrer-Policy': 'strict-origin-when-cross-origin'
 };
+
+// Utility functions for the translation logic
 function getICount(translateText) {
   return (translateText || '').split('i').length - 1;
 }
@@ -35,17 +53,11 @@ function getTimestamp(iCount) {
   return ts - (ts % iCount) + iCount;
 }
 
-async function translate(
-  text,
-  sourceLang = 'AUTO',
-  targetLang = 'ZH',
-  numberAlternative = 0,
-  printResult = false,
-) {
+// The translation function
+async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlternative = 0, printResult = false) {
   const iCount = getICount(text);
   const id = getRandomNumber();
-
-  numberAlternative = Math.max(Math.min(3, numberAlternative), 0);
+  const headers = { ...baseHeaders, 'cookie': getNextCookie() }; // Include the selected cookie
 
   const postData = {
     jsonrpc: '2.0',
@@ -62,67 +74,43 @@ async function translate(
     },
   };
 
-  let postDataStr = JSON.stringify(postData);
-
-  if ((id + 5) % 29 === 0 || (id + 3) % 13 === 0) {
-    postDataStr = postDataStr.replace('"method":"', '"method" : "');
-  } else {
-    postDataStr = postDataStr.replace('"method":"', '"method": "');
-  }
-
   try {
-    const response = await axios.post(DEEPL_BASE_URL, postDataStr, {
-      headers: headers,
-    });
-
-    if (response.status === 429) {
-      throw new Error(
-        `Too many requests, your IP has been blocked by DeepL temporarily, please don't request it frequently in a short time.`
-      );
-    }
-
+    const response = await axios.post(DEEPL_BASE_URL, JSON.stringify(postData), { headers });
     if (response.status !== 200) {
       console.error('Error', response.status);
-      return;
+      return null;
     }
-
-    const result = response.data.result.texts[0]
-    if (printResult) {
-      console.log(result);
-    }
-    return result;
+    return response.data.result.texts[0];
   } catch (err) {
     console.error(err);
+    return null;
   }
 }
 
-const app = express();
-const PORT = process.env.PORT || 9000
-
+// Express server setup
 app.use(bodyParser.json());
+
 app.get('/', (req, res) => {
   res.send('Welcome to deeplx-pro');
-});
-app.get('/translate', (req, res) => {
-  res.send('This is a translate api');
 });
 
 app.post('/translate', async (req, res) => {
   const { text, source_lang, target_lang } = req.body;
-
   try {
     const result = await translate(text, source_lang, target_lang);
-    const responseData = {
+    if (!result) {
+      res.status(500).json({ error: 'Translation failed or too many requests' });
+      return;
+    }
+    res.json({
       alternatives: result.alternatives,
       code: 200,
-      data: result.text, // 取第一个翻译结果
-      id: Math.floor(Math.random() * 10000000000), // 生成一个随机 ID
+      data: result.text,
+      id: Math.floor(Math.random() * 10000000000),
       method: 'Free',
-      source_lang,
-      target_lang,
-    };
-
-    res.json(responseData);
+      source_lang: source_lang.toUpperCase(),
+      target_lang: target_lang.toUpperCase(),
+    });
   } catch (error) {
     res.status(500).json({ error: 'Translation failed' });
   }
