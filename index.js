@@ -1,17 +1,11 @@
 const axios = require('axios').default;
 const express = require('express');
 const bodyParser = require('body-parser');
-require('dotenv').config();
-
 const DEEPL_BASE_URL = 'https://api.deepl.com/jsonrpc';
 const app = express();
-const PORT = process.env.PORT || 9000;
-
-// Cookies storage
-let cookies = process.env.DEEPL_COOKIES ? process.env.DEEPL_COOKIES.split(',') : [];
+const PORT = 9000;
 
 let currentCookieIndex = 0;
-
 // Select the next cookie in a round-robin fashion
 function getNextCookie() {
   const cookieValue = cookies[currentCookieIndex];
