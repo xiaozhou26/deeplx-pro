@@ -1,7 +1,6 @@
 const axios = require('axios').default;
 const express = require('express');
 const bodyParser = require('body-parser');
-require('dotenv').config();
 
 const DEEPL_BASE_URL = 'https://api.deepl.com/jsonrpc';
 const app = express();
