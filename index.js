@@ -9,14 +9,24 @@ const PORT = process.env.PORT || 9000;
 // Cookies storage
 let cookies = process.env.DEEPL_COOKIES ? process.env.DEEPL_COOKIES.split(',') : [];
 
+let cookiesCount = cookies.length; // 有效cookie的数量
+let invalidCookies = []; // 失效cookie的数组
 let currentCookieIndex = 0;
 
 // Select the next cookie in a round-robin fashion
 function getNextCookie() {
-  const cookieValue = cookies[currentCookieIndex];
-  const cookie = `dl_session=${cookieValue}`; // 重新添加 "dl_session=" 前缀
-  currentCookieIndex = (currentCookieIndex + 1) % cookies.length;
-  return cookie;
+  let attempts = 0;
+  while (attempts < cookies.length) {
+    const cookieValue = cookies[currentCookieIndex];
+    if (!invalidCookies.includes(cookieValue)) {
+      const cookie = dl_session=${cookieValue};
+      currentCookieIndex = (currentCookieIndex + 1) % cookies.length;
+      return cookie;
+    }
+    currentCookieIndex = (currentCookieIndex + 1) % cookies.length;
+    attempts++;
+  }
+  return null; // 如果所有的cookies都无效，返回null
 }
 
 // Basic headers template, excluding the cookie which will be dynamically inserted
@@ -53,10 +63,21 @@ function getTimestamp(iCount) {
 }
 
 // The translation function
-async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlternative = 0, printResult = false) {
+async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlternative = 0, printResult = false, tryCount = 0) {
+  // 确保tryCount小于有效cookie数量
+  if (tryCount >= cookiesCount) {
+    console.error("No more valid cookies to try.");
+    return null;
+  }
+  
   const iCount = getICount(text);
   const id = getRandomNumber();
-  const headers = { ...baseHeaders, 'cookie': getNextCookie() }; // Include the selected cookie
+  const cookie = getNextCookie();
+  if (!cookie) { // 如果没有有效的cookie，直接返回null
+    console.error("No valid cookies available.");
+    return null;
+  }
+  const headers = { ...baseHeaders, 'cookie': cookie }; // Include the selected cookie
 
   const postData = {
     jsonrpc: '2.0',
@@ -81,8 +102,11 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
     }
     return response.data.result.texts[0];
   } catch (err) {
-    console.error(err);
-    return null;
+    console.error("response error:" + err);
+    // 如果遇到错误，则假定当前cookie失效，加入到失效列表中
+    invalidCookies.push(cookie.split('=')[1]); // 添加失效的cookie
+    console.log("Trying again due to assuming the current cookie is invalid error...");
+    return await translate(text, sourceLang, targetLang, numberAlternative, printResult, tryCount + 1);
   }
 }
 
