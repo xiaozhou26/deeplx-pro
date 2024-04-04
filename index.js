@@ -19,7 +19,7 @@ function getNextCookie() {
   while (attempts < cookies.length) {
     const cookieValue = cookies[currentCookieIndex];
     if (!invalidCookies.includes(cookieValue)) {
-      const cookie = dl_session=${cookieValue};
+      const cookie = `dl_session=${cookieValue}`;
       currentCookieIndex = (currentCookieIndex + 1) % cookies.length;
       return cookie;
     }
