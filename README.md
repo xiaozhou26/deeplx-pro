@@ -3,6 +3,10 @@
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fxiaozhou26%2Fdeeplx-pro&env=DEEPL_COOKIES&project-name=deeplx-pro&repository-name=deeplx-pro)
 
+## 使用方法
+
+F12打开开发者控制台，然后按照图片复制的cookie的dl_session。
+![DeepL翻译API示例代码](https://jsd.cdn.zzko.cn/gh/xiaozhou26/tuph@main/images/2024-03-07%20120245.png)
 
 ## 安装部署
 
@@ -13,12 +17,9 @@ docker run -d --name deeplx-pro -p 9000:9000 -e DEEPL_COOKIES="" xiaoxiaofeihh/d
 DEEPL_COOKIES=你的dl_seesion值，用,隔开
 列如DEEPL_COOKIES="1560565165-1811-481,515156-561561-11651"
 
+### 使用
 
-
-## 使用方法
-
-F12打开开发者控制台，然后按照图片复制的cookie的dl_session。
-![DeepL翻译API示例代码](https://jsd.cdn.zzko.cn/gh/xiaozhou26/tuph@main/images/2024-03-07%20120245.png)
+- [使用API教程](https://github.com/xiaozhou26/deeplx/blob/main/API.md)
 
 
 1. 替换代码中的 `cookie` 变量为你自己的 DeepL Pro cookie。
