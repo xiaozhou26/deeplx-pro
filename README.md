@@ -35,3 +35,6 @@ DEEPL_COOKIES=你的dl_seesion值，用,隔开
 - 请不要频繁发送大量请求，否则可能会被 DeepL 暂时阻止 IP。
 - 本代码仅供学习和参考，请勿用于商业用途。
 - 使用 DeepL 时，请遵守其使用条款和限制。
+
+## 许可证
+该项目已获得[MIT License](LICENSE)的许可
