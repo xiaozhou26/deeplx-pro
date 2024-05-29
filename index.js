@@ -29,7 +29,6 @@ function getNextCookie() {
   return null; // 如果所有的cookies都无效，返回null
 }
 
-// Basic headers template, excluding the cookie which will be dynamically inserted
 const baseHeaders = {
   'Content-Type': 'application/json',
   Accept: '*/*',
