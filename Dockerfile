@@ -1,5 +1,5 @@
 # 指定node为基础镜像，在官方版本中选择alpine版本更小
-FROM node:14-alpine
+FROM node:20-alpine
 
 # 在容器内创建app目录并设置工作目录
 WORKDIR /app
