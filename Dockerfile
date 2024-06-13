@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 9000
 
 # 启动node应用
-CMD [ "node", "index.js" ]
+CMD [ "node", "server.js" ]
