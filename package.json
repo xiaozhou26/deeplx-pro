@@ -1,16 +1,17 @@
 {
   "name": "deeplx-pro",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "description": "DeepL proxy server with proxy and cookie pool management",
+  "main": "server.js",
   "dependencies": {
-    "axios": "^1.6.7",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.3",
-    "lodash": "^4.17.20",
-    "body-parser": "^1.20.2"
-  }
+    "axios": "^0.21.1",
+    "body-parser": "^1.19.0",
+    "dotenv": "^8.6.0",
+    "express": "^4.17.1"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC"
 }
