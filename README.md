@@ -9,10 +9,11 @@ F12打开开发者控制台，然后按照图片复制的cookie的dl_session。
 ![DeepL翻译API示例代码](https://jsd.cdn.zzko.cn/gh/xiaozhou26/tuph@main/images/2024-03-07%20120245.png)
 
 ## 环境变量
+```
 PORT=9000
 PROXY_LIST=
 DEEPL_COOKIES=
-
+```
 
 ## 安装部署
 
