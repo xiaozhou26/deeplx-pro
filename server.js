@@ -11,7 +11,9 @@ app.use(bodyParser.json());
 app.get('/', (req, res) => {
   res.send('Welcome to deeplx-pro');
 });
-
+app.get('/translate', (req, res) => {
+  res.status(405).send('GET method not supported for this endpoint. Please use POST.');
+});
 app.post('/translate', async (req, res) => {
   const { text, source_lang, target_lang } = req.body;
   try {
@@ -25,7 +27,6 @@ app.post('/translate', async (req, res) => {
       code: 200,
       data: result.text,
       id: Math.floor(Math.random() * 10000000000),
-      method: 'Free',
       source_lang: source_lang.toUpperCase(),
       target_lang: target_lang.toUpperCase(),
     });
