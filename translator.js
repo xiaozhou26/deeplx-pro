@@ -41,12 +41,21 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   const proxy = getNextProxy();
   const cookie = getNextCookie();
 
-  if (!proxy || !cookie) {
+  // Add a maximum retry limit
+  const maxRetries = 5;
+  if (tryCount >= maxRetries) {
+    console.error("Max retry limit reached.");
+    return null;
+  }
+
+  if (!proxy && !cookie) {
     console.error("No valid proxies or cookies available.");
     return null;
   }
 
-  const headers = { ...baseHeaders, 'proxy': proxy, 'cookie': cookie };
+  const headers = { ...baseHeaders };
+  if (proxy) headers['proxy'] = proxy;
+  if (cookie) headers['cookie'] = cookie;
 
   const postData = {
     jsonrpc: '2.0',
@@ -72,8 +81,11 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
     return response.data.result.texts[0];
   } catch (err) {
     console.error("response error:" + err);
-    markProxyInvalid(proxy);
-    markCookieInvalid(cookie);
+
+    // Mark the proxy and/or cookie as invalid only if they were used
+    if (proxy) markProxyInvalid(proxy);
+    if (cookie) markCookieInvalid(cookie);
+
     console.log("Trying again due to assuming the current proxy or cookie is invalid...");
     return await translate(text, sourceLang, targetLang, numberAlternative, tryCount + 1);
   }
