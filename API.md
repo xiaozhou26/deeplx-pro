@@ -110,12 +110,12 @@ print(response.text)
 
 
 安装插件后，点击浏览器右上角的插件按钮，选择"沉浸式翻译"，然后进入设置页面。
-![p1](https://www.jsdelivr.ren/gh/xiaozhou26/tuph@main/images/20240314170457.png)
+![p1](https://cdn.jsdmirror.com/gh/xiaozhou26/tuph@main/images/20240314170457.png)
 
 在左下角点击"开发者设置"，然后开启"Beta测试特性"。
 
 点击"基本设置"，然后在翻译服务中选择"DeepLX"。在"API URL"字段中填入以下API地址：
-![p2](https://www.jsdelivr.ren/gh/xiaozhou26/tuph@main/images/20240314170447.png)
+![p2](https://cdn.jsdmirror.com/gh/xiaozhou26/tuph@main/images/20240314170447.png)
 
 ```
 https://localhost:8000/translate

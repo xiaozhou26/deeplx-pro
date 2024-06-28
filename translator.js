@@ -54,7 +54,6 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   }
 
   const headers = { ...baseHeaders };
-  if (proxy) headers['proxy'] = proxy;
   if (cookie) headers['cookie'] = cookie;
 
   const postData = {
@@ -72,8 +71,16 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
     },
   };
 
+  const axiosConfig = {
+    headers,
+    proxy: proxy ? {
+      host: proxy.split(':')[0],
+      port: parseInt(proxy.split(':')[1], 10),
+    } : false,
+  };
+
   try {
-    const response = await axios.post(DEEPL_BASE_URL, JSON.stringify(postData), { headers });
+    const response = await axios.post(DEEPL_BASE_URL, postData, axiosConfig);
     if (response.status !== 200) {
       console.error('Error', response.status);
       return null;

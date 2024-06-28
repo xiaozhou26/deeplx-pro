@@ -6,7 +6,7 @@
 ## 使用方法
 
 F12打开开发者控制台，然后按照图片复制的cookie的dl_session。
-![DeepL翻译API示例代码](https://jsd.cdn.zzko.cn/gh/xiaozhou26/tuph@main/images/2024-03-07%20120245.png)
+![DeepL翻译API示例代码](https://cdn.jsdmirror.com/gh/xiaozhou26/tuph@main/images/2024-03-07%20120245.png)
 
 ## 环境变量
 ```
