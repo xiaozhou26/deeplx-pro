@@ -8,7 +8,7 @@ function parseProxy(proxy) {
   // 如果包含协议前缀，删除协议前缀
   if (proxy.startsWith('http://')) {
     proxy = proxy.slice(7);
-  } else if (proxy.startsWith('socks://')) {
+  } else if (proxy.startsWith('socks5://')) {
     proxy = proxy.slice(8);
   }
 

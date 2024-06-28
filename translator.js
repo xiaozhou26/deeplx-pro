@@ -78,7 +78,8 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
       auth: proxy.auth ? {
         username: proxy.auth.split(':')[0],
         password: proxy.auth.split(':')[1]
-      } : undefined
+      } : undefined,
+      protocol: 'http'  // 确保协议是正确的
     } : false,
   };
 
