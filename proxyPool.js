@@ -1,14 +1,21 @@
+const url = require('url');
+
 let proxies = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',') : [];
 let invalidProxies = [];
 let currentProxyIndex = 0;
 
 function parseProxy(proxy) {
+  // 如果包含协议前缀，删除协议前缀
   if (proxy.startsWith('http://')) {
-    proxy = proxy.slice(7);  // 删除 'http://'
+    proxy = proxy.slice(7);
   } else if (proxy.startsWith('socks://')) {
-    proxy = proxy.slice(8);  // 删除 'socks://'
+    proxy = proxy.slice(8);
   }
-  return proxy;
+
+  const parsedUrl = url.parse(`http://${proxy}`); // 添加临时的协议，以便于使用 url.parse 解析
+  const { hostname, port, auth } = parsedUrl;
+
+  return { hostname, port, auth };
 }
 
 function getNextProxy() {
@@ -20,12 +27,12 @@ function getNextProxy() {
   }
 
   while (attempts < proxies.length) {
-    let proxy = proxies[currentProxyIndex];
-    proxy = parseProxy(proxy);  // 解析代理，删除前缀
+    const proxy = proxies[currentProxyIndex];
+    const { hostname, port, auth } = parseProxy(proxy);
 
     if (!invalidProxies.includes(proxy)) {
       currentProxyIndex = (currentProxyIndex + 1) % proxies.length;
-      return proxy;
+      return { hostname, port, auth };
     }
     currentProxyIndex = (currentProxyIndex + 1) % proxies.length;
     attempts++;
