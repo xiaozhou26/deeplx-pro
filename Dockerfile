@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 安装app依赖包
-RUN npm install --production
+RUN npm install --omit=dev
 
 # 复制本地代码到容器内
 COPY . .
