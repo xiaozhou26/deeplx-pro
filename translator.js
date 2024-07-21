@@ -56,6 +56,7 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality =
   if (cookie) headers['cookie'] = cookie;
 
   const priority = quality === 'fast' ? -1 : 1;
+  const advancedMode = quality !== 'fast';
 
   const postData = {
     jsonrpc: '2.0',
@@ -92,7 +93,7 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality =
         mode: 'translate',
         browserType: 1,
         textType: 'plaintext',
-        advancedMode: true,
+        advancedMode: advancedMode,
       },
       timestamp: getTimestamp(iCount),
     },
