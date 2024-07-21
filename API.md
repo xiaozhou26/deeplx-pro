@@ -57,7 +57,8 @@ const axios = require('axios');
 let data = JSON.stringify({
   "text": "Hello, world!",
   "source_lang": "auto",
-  "target_lang": "ZH"
+  "target_lang": "ZH",
+  "quality": "normal"
 });
 
 let config = {
@@ -92,7 +93,7 @@ url = "https://localhost:9000/translate"
 payload = json.dumps({
   "text": "Hello, world!",
   "source_lang": "auto",
-  "target_lang": "ZH"
+  "target_lang": "ZH",
 })
 headers = {
   'Content-Type': 'application/json'

@@ -35,6 +35,8 @@ DEEPL_COOKIES=你的dl_seesion值，用,隔开
    - `text`：要翻译的文本
    - `source_lang`：源语言（可选，默认为 'AUTO'）
    - `target_lang`：目标语言（可选，默认为 'ZH'）
+   - `quality`: (字符串, 可选): 翻译质量。可以是 'normal' 或 'fast'。默认为 'normal'。
+
 4. 服务器将返回翻译结果的 JSON 响应。
 
 ## 注意事项
