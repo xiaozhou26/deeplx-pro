@@ -1,4 +1,4 @@
-require('dotenv').config(); 
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { translate } = require('./translator');
@@ -17,9 +17,9 @@ app.get('/translate', (req, res) => {
 });
 
 app.post('/translate', async (req, res) => {
-  const { text, source_lang, target_lang } = req.body;
+  const { text, source_lang, target_lang, quality = 'normal' } = req.body; // Default quality is 'normal'
   try {
-    const result = await translate(text, source_lang, target_lang);
+    const result = await translate(text, source_lang, target_lang, quality);
     if (!result) {
       res.status(500).json({ error: 'Translation failed or too many requests' });
       return;
