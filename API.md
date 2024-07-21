@@ -87,7 +87,7 @@ axios.request(config)
 import requests
 import json
 
-url = "https://localhost:8000/translate"
+url = "https://localhost:9000/translate"
 
 payload = json.dumps({
   "text": "Hello, world!",

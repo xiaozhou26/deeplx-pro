@@ -35,7 +35,7 @@ function getTimestamp(iCount) {
   return ts - (ts % iCount) + iCount;
 }
 
-async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality = 'normal', numberAlternative = 0, tryCount = 0) {
+async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality = 'normal', tryCount = 0) {
   const iCount = getICount(text);
   const id = getRandomNumber();
   const proxy = getNextProxy();
@@ -60,7 +60,7 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality =
   const postData = {
     jsonrpc: '2.0',
     method: 'LMT_handle_jobs',
-    id: 84990010, // Fixed ID as per the new structure
+    id: id,
     params: {
       jobs: [
         {
@@ -134,7 +134,7 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality =
     if (cookie) markCookieInvalid(cookie);
 
     console.log("Trying again due to assuming the current proxy or cookie is invalid...");
-    return await translate(text, sourceLang, targetLang, quality, numberAlternative, tryCount + 1);
+    return await translate(text, sourceLang, targetLang, quality, tryCount + 1);
   }
 }
 
