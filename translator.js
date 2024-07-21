@@ -58,7 +58,7 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   const postData = {
     jsonrpc: '2.0',
     method: 'LMT_handle_jobs',
-    id: id,
+    id: id, // Fixed ID as per the new structure
     params: {
       jobs: [
         {
@@ -83,9 +83,9 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
         },
         source_lang_computed: sourceLang.toUpperCase(),
       },
-      priority: -1,
+      priority: 1,
       commonJobParams: {
-        quality: 'fast',
+        quality: 'normal',
         regionalVariant: 'zh-Hans',
         mode: 'translate',
         browserType: 1,
