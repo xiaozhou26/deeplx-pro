@@ -118,18 +118,19 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality =
       console.error('Error', response.status);
       return null;
     }
+
     const result = response.data.result;
     const translations = result && result.translations;
     if (translations && translations.length > 0 && translations[0].beams.length > 0) {
       const texts = translations[0].beams.flatMap(beam => beam.sentences.map(sentence => sentence.text));
       return {
-        text: texts[0],
-        alternatives: texts.slice(1)
+        text: texts[0], // 返回第一个翻译结果
+        alternatives: texts.slice(1) // 返回剩余的备用翻译
       };
     }
     return null;
   } catch (err) {
-    console.error("response error:" + err);
+    console.error("response error:", err);
 
     if (proxy) markProxyInvalid(proxy);
     if (cookie) markCookieInvalid(cookie);
