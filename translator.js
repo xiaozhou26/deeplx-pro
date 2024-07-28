@@ -35,7 +35,7 @@ function getTimestamp(iCount) {
   return ts - (ts % iCount) + iCount;
 }
 
-async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlternative = 0, tryCount = 0) {
+async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', quality = 'normal', tryCount = 0) {
   const iCount = getICount(text);
   const id = getRandomNumber();
   const proxy = getNextProxy();
@@ -55,16 +55,45 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
   const headers = { ...baseHeaders };
   if (cookie) headers['cookie'] = cookie;
 
+  const priority = quality === 'fast' ? -1 : 1;
+  const advancedMode = quality !== 'fast';
+
   const postData = {
     jsonrpc: '2.0',
-    method: 'LMT_handle_texts',
+    method: 'LMT_handle_jobs',
     id: id,
     params: {
-      texts: [{ text: text, requestAlternatives: numberAlternative }],
-      splitting: 'newlines',
+      jobs: [
+        {
+          kind: 'default',
+          sentences: [
+            {
+              text: text,
+              id: 1,
+              prefix: '',
+            },
+          ],
+          raw_en_context_before: [],
+          raw_en_context_after: [],
+          preferred_num_beams: 4,
+        },
+      ],
       lang: {
-        source_lang_user_selected: sourceLang.toUpperCase(),
         target_lang: targetLang.toUpperCase(),
+        preference: {
+          weight: {},
+          default: 'default',
+        },
+        source_lang_computed: sourceLang.toUpperCase(),
+      },
+      priority: priority,
+      commonJobParams: {
+        quality: quality,
+        regionalVariant: 'zh-Hans',
+        mode: 'translate',
+        browserType: 1,
+        textType: 'plaintext',
+        advancedMode: advancedMode,
       },
       timestamp: getTimestamp(iCount),
     },
@@ -89,15 +118,25 @@ async function translate(text, sourceLang = 'AUTO', targetLang = 'ZH', numberAlt
       console.error('Error', response.status);
       return null;
     }
-    return response.data.result.texts[0];
+
+    const result = response.data.result;
+    const translations = result && result.translations;
+    if (translations && translations.length > 0 && translations[0].beams.length > 0) {
+      const texts = translations[0].beams.flatMap(beam => beam.sentences.map(sentence => sentence.text));
+      return {
+        text: texts[0], // 返回第一个翻译结果
+        alternatives: texts.slice(1) // 返回剩余的备用翻译
+      };
+    }
+    return null;
   } catch (err) {
-    console.error("response error:" + err);
+    console.error("response error:", err);
 
     if (proxy) markProxyInvalid(proxy);
     if (cookie) markCookieInvalid(cookie);
 
     console.log("Trying again due to assuming the current proxy or cookie is invalid...");
-    return await translate(text, sourceLang, targetLang, numberAlternative, tryCount + 1);
+    return await translate(text, sourceLang, targetLang, quality, tryCount + 1);
   }
 }
 

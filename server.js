@@ -11,13 +11,15 @@ app.use(bodyParser.json());
 app.get('/', (req, res) => {
   res.send('Welcome to deeplx-pro');
 });
+
 app.get('/translate', (req, res) => {
   res.status(405).send('GET method not supported for this endpoint. Please use POST.');
 });
+
 app.post('/translate', async (req, res) => {
-  const { text, source_lang, target_lang } = req.body;
+  const { text, source_lang, target_lang, quality } = req.body;
   try {
-    const result = await translate(text, source_lang, target_lang);
+    const result = await translate(text, source_lang, target_lang, quality || 'normal');
     if (!result) {
       res.status(500).json({ error: 'Translation failed or too many requests' });
       return;
@@ -31,7 +33,7 @@ app.post('/translate', async (req, res) => {
       target_lang: target_lang.toUpperCase(),
     });
   } catch (error) {
-    res.status(500).json({ error: 'Translation failed' });
+    res.status(500).json({ error: 'Translation failed', details: error.message });
   }
 });
 
