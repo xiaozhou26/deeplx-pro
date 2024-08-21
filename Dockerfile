@@ -1,20 +1,30 @@
-# 指定node为基础镜像，在官方版本中选择alpine版本更小
-FROM node:20-alpine
+# 使用 Go 1.22 官方镜像作为构建环境
+FROM golang:1.22 AS builder
 
-# 在容器内创建app目录并设置工作目录
+# 禁用 CGO
+ENV CGO_ENABLED=0
+
+# 设置工作目录
 WORKDIR /app
 
-# 复制package.json和package-lock.json
-COPY package*.json ./
+# 复制 go.mod 和 go.sum 并下载依赖
+COPY go.mod go.sum ./
+RUN go mod download
 
-# 安装app依赖包
-RUN npm install --omit=dev
-
-# 复制本地代码到容器内
+# 复制源代码并构建应用
 COPY . .
+RUN go build -ldflags "-s -w" -o /app/deeplx-pro .
 
-# 暴露容器端口
+# 使用 Alpine Linux 作为最终镜像
+FROM alpine:latest
+
+# 设置工作目录
+WORKDIR /app
+
+# 从构建阶段复制编译好的应用和资源
+COPY --from=builder /app/deeplx-pro /app/deeplx-pro
+
+# 暴露端口
 EXPOSE 9000
 
-# 启动node应用
-CMD [ "node", "server.js" ]
+CMD ["/app/deeplx-pro"]
