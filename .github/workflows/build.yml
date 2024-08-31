@@ -47,7 +47,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
       with:
-        tag_name: v1.0.0
+        tag_name: v1.0.1
         files: artifact/*.tar.gz
               
     - name: Delete workflow runs
