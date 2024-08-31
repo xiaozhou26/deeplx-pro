@@ -14,40 +14,41 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: 'stable'
         check-latest: true
 
-    - name: Build binary
+    - name: Build and package binaries
       run: |
         mkdir -p artifact
-        GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o deeplx-pro -a -ldflags '-s -w -extldflags "-static"' . && rm -f artifact/deeplx-pro && cp deeplx-pro artifact/deeplx-pro && cd artifact && tar -czvf ../deeplx-pro-linux-amd64.tar.gz * && cd ..
-        GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o deeplx-pro -a -ldflags '-s -w -extldflags "-static"' . && rm -f artifact/deeplx-pro && cp deeplx-pro artifact/deeplx-pro && cd artifact && tar -czvf ../deeplx-pro-windows-amd64.tar.gz * && cd ..
-        GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o deeplx-pro -a -ldflags '-s -w -extldflags "-static"' . && rm -f artifact/deeplx-pro && cp deeplx-pro artifact/deeplx-pro && cd artifact && tar -czvf ../deeplx-pro-darwin-amd64.tar.gz * && cd ..
-        GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -o deeplx-pro -a -ldflags '-s -w -extldflags "-static"' . && rm -f artifact/deeplx-pro && cp deeplx-pro artifact/deeplx-pro && cd artifact && tar -czvf ../deeplx-pro-freebsd-amd64.tar.gz * && cd ..
-        
-    - name: Upload artifact
+        platforms=("linux" "windows" "darwin" "freebsd")
+        arch="amd64"
+
+        for platform in "${platforms[@]}"; do
+          if [ "$platform" == "windows" ]; then
+            ext=".exe"
+          else
+            ext=""
+          fi
+          echo "Building for $platform $arch"
+          GOOS=$platform GOARCH=$arch CGO_ENABLED=0 go build -o "artifact/deeplx-pro-${platform}-${arch}${ext}" -a -ldflags '-s -w -extldflags "-static"' .
+          tar -czvf "artifact/deeplx-pro-${platform}-${arch}.tar.gz" -C artifact "deeplx-pro-${platform}-${arch}${ext}"
+        done
+
+    - name: Upload packaged binaries
       uses: actions/upload-artifact@master
       with:
         name: deeplx-pro-pre-built.zip
-        path: |
-            deeplx-pro-linux-amd64.tar.gz
-            deeplx-pro-windows-amd64.tar.gz
-            deeplx-pro-darwin-amd64.tar.gz
-            deeplx-pro-freebsd-amd64.tar.gz
-            
-    - name: Create release
-      uses: softprops/action-gh-release@v1
+        path: artifact/*.tar.gz
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
       with:
         tag_name: v1.0.0
-        files: |
-            deeplx-pro-linux-amd64.tar.gz
-            deeplx-pro-windows-amd64.tar.gz
-            deeplx-pro-darwin-amd64.tar.gz
-            deeplx-pro-freebsd-amd64.tar.gz
+        files: artifact/*.tar.gz
               
     - name: Delete workflow runs
       uses: Mattraks/delete-workflow-runs@v2
