@@ -158,6 +158,12 @@ func Translate(text, sourceLang, targetLang, quality string, tryCount int) (stri
 	if targetLang == "EN" {
 		regionalVariant = "en-US"
 	}
+
+	if targetLang == "ZH-HANT" {
+		targetLang = "ZH"
+		regionalVariant = "zh-Hant"
+	}
+
 	if quality == "fast" {
 		priority = -1
 		advancedMode = false
