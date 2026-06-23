@@ -21,7 +21,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `text` | string | 是 | 待翻译文本（最长 1500 字符） |
+| `text` | string | 是 | 待翻译文本，超过 1500 字符会自动分片翻译 |
 | `target_lang` | string | 是 | 目标语言代码 |
 | `source_lang` | string | 否 | 源语言代码，留空或 `"auto"` 表示自动检测 |
 | `quality` | string | 否 | 保留字段，当前未使用 |
@@ -184,9 +184,109 @@ fetch('http://127.0.0.1:9000/translate', {
 
 ---
 
+## 官方 API 兼容端点
+
+以下三个端点尽量与 [DeepL 官方 API](https://developers.deepl.com/api-reference) 对齐，方便已有官方 SDK 的项目改 `base_url` 直接接入。
+
+---
+
+## 翻译接口（官方兼容）
+
+`POST /v2/translate`
+
+### 请求参数
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| `text` | string \| string[] | 是 | 待翻译文本，可以是单条字符串或数组（最多 50 条）。单条超出 1500 字符会自动分片 |
+| `target_lang` | string | 是 | 目标语言代码 |
+| `source_lang` | string | 否 | 源语言代码，留空或 `"auto"` 表示自动检测 |
+| `formality` | string | 否 | 保留字段，当前未使用 |
+
+### 请求示例
+
+```bash
+# 单条文本（字符串形式）
+curl 'http://127.0.0.1:9000/v2/translate' \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Hello, world!","target_lang":"DE"}'
+
+# 批量翻译（数组形式，最多 50 条）
+curl 'http://127.0.0.1:9000/v2/translate' \
+  -H 'Content-Type: application/json' \
+  -d '{"text":["Hello","Good morning"],"target_lang":"ZH"}'
+```
+
+### 成功响应
+
+```json
+{
+  "translations": [
+    {
+      "detected_source_language": "EN",
+      "text": "你好，世界！"
+    }
+  ]
+}
+```
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `translations` | array | 与输入文本一一对应的翻译结果 |
+| `translations[].detected_source_language` | string | 检测到的源语言（源语言指定时通常为空字符串） |
+| `translations[].text` | string | 翻译后的文本 |
+
+> ⚠️ 与旧 `/translate` 不同，官方兼容端点不返回外层 `code` 字段，错误时直接返回对应 HTTP 状态码 + `{code, message}`。
+
+---
+
+## 语言列表接口（官方兼容）
+
+`GET /v2/languages`
+
+返回支持的语言列表，响应格式与 DeepL 官方 `/v2/languages` 一致。
+
+### 查询参数
+
+| 字段 | 说明 |
+|---|---|
+| `type` | 可选，`source` 或 `target`（默认 `target`）。`target` 返回 `supports_formality` 字段，`source` 不返回 |
+
+### 请求示例
+
+```bash
+curl 'http://127.0.0.1:9000/v2/languages?type=target'
+```
+
+### 成功响应
+
+```json
+[
+  { "language": "DE", "name": "German", "supports_formality": true },
+  { "language": "EN-US", "name": "English (American)", "supports_formality": false },
+  { "language": "ZH-HANS", "name": "Chinese (Simplified)", "supports_formality": false }
+]
+```
+
+---
+
+## 健康检查
+
+`GET /health`
+
+供 Docker / Kubernetes / 监控系统做存活探针，无需鉴权，不访问上游。
+
+```bash
+curl 'http://127.0.0.1:9000/health'
+# {"status":"ok"}
+```
+
+---
+
 ## 注意事项
 
-1. **免费端点限制**：当前始终使用 DeepL 免费翻译端点，高频调用可能触发限流（429）。
-2. **Cookie 依赖**：服务启动时会访问 DeepL 网站获取 Cookie，确保网络连通性。
-3. **不可用于生产**：本接口模拟浏览器扩展行为，DeepL 官方可能随时调整接口，不建议用于商业/生产环境。
-4. **文本长度**：单次请求最多翻译 1500 个字符，超出返回 413 错误。
+1. **免费端点限制**：默认使用 DeepL 免费翻译端点，高频调用可能触发限流（429）。设置 `DEEPL_DL_SESSION` 可启用 Pro 端点。
+2. **自动重试**：遇到 429 或网络错误时会自动重试 1 次（重试前重新预热 Cookie 并延迟 1 秒）。
+3. **长文本分片**：单条文本超过 1500 字符时自动切分并顺序翻译，对调用方透明；`/v2/translate` 单次最多 50 条文本。
+4. **Cookie 依赖**：服务启动时会访问 DeepL 网站获取 Cookie，确保网络连通性。
+5. **不可用于生产**：本接口模拟浏览器扩展行为，DeepL 官方可能随时调整接口，不建议用于商业/生产环境。
