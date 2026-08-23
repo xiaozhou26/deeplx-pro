@@ -9,54 +9,86 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-linux:
     name: Build Linux amd64
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
 
-      - name: Cache cargo dependencies
+      - name: Install native build dependencies
+        run: sudo apt-get update && sudo apt-get install -y clang cmake libclang-dev ninja-build perl pkg-config
+
+      - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
 
-      - name: Build release binary
-        run: cargo build --release --target x86_64-unknown-linux-gnu
+      - name: Build
+        run: cargo build --release --locked
 
-      - name: Prepare binary
+      - name: Package
         run: |
-          mkdir -p artifacts
-          cp target/x86_64-unknown-linux-gnu/release/deepl2api artifacts/
+          mkdir -p package
+          cp target/release/deeplx-pro package/deeplx-pro
+          tar -C package -czf deeplx-pro-linux-amd64.tar.gz deeplx-pro
 
-      - name: Create archive
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64
+          path: deeplx-pro-linux-amd64.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows amd64
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Package
+        shell: pwsh
         run: |
-          cd artifacts
-          tar czf ../deepl2api-linux-amd64.tar.gz deepl2api
+          New-Item -ItemType Directory -Path package | Out-Null
+          Copy-Item target/release/deeplx-pro.exe package/deeplx-pro.exe
+          Compress-Archive -Path package/deeplx-pro.exe -DestinationPath deeplx-pro-windows-amd64.zip
 
-      - name: Generate release notes
-        id: generate_notes
-        run: |
-          gh api \
-            --method POST \
-            -H "Accept: application/vnd.github+json" \
-            "/repos/${{ github.repository }}/releases/generate-notes" \
-            -f tag_name="${{ github.ref_name }}" \
-            --jq '.body' > release_notes.md || {
-            echo "API release notes failed, using git log fallback..."
-            echo "## What's Changed" > release_notes.md
-            git log "$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)"..HEAD --oneline --format="* %s (%h)" >> release_notes.md
-          }
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: deeplx-pro-windows-amd64.zip
+          if-no-files-found: error
 
-      - name: Create Release
+  publish:
+    name: Publish GitHub Release
+    needs:
+      - build-linux
+      - build-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "Release ${{ github.ref_name }}" \
-            --notes-file release_notes.md \
-            "deepl2api-linux-amd64.tar.gz"
+          gh release create "${{ github.ref_name }}" artifacts/* \
+            --repo "${{ github.repository }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
