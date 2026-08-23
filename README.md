@@ -14,31 +14,16 @@ DeepL 非官方翻译 API。项目模拟 DeepL Chrome 扩展的内部翻译请�
 - 超过 1500 字符时自动按自然边界分片并顺序翻译
 - 429 和网络错误自动刷新 Cookie 并重试一次
 - 支持 HTTP、HTTPS、SOCKS4、SOCKS4A、SOCKS5 和 SOCKS5H 代理
-- 设置 `DEEPL_DL_SESSION` 后使用 DeepL Pro 端点
-- 完全开放的 CORS
+- 所有翻译请求固定使用 `https://oneshot-free.www.deepl.com/v1/translate`，无需账号 Cookie
+- 可通过 `API_KEY` 保护翻译接口
 
 ## Docker 部署
 
-镜像会同时发布到 Docker Hub 和 GitHub Container Registry（GHCR）：
+镜像发布到 GitHub Container Registry（GHCR）：
 
-- `xiaoxiaofeihh/deeplx-pro:latest`
 - `ghcr.io/xiaozhou26/deeplx-pro:latest`
 
 支持 `linux/amd64` 和 `linux/arm64`。
-
-### Docker Hub
-
-```bash
-docker pull xiaoxiaofeihh/deeplx-pro:latest
-
-docker run -d \
-  --name deeplx-pro \
-  --restart unless-stopped \
-  -p 9000:9000 \
-  xiaoxiaofeihh/deeplx-pro:latest
-```
-
-### GitHub Container Registry
 
 ```bash
 docker pull ghcr.io/xiaozhou26/deeplx-pro:latest
@@ -60,18 +45,18 @@ docker run -d \
   --restart unless-stopped \
   -p 9000:9000 \
   -e PROXY_LIST=socks5h://host.docker.internal:1080 \
-  xiaoxiaofeihh/deeplx-pro:latest
+  ghcr.io/xiaozhou26/deeplx-pro:latest
 ```
 
-### 使用 DeepL Pro 会话
+### 使用 API 鉴权
 
 ```bash
 docker run -d \
   --name deeplx-pro \
   --restart unless-stopped \
   -p 9000:9000 \
-  -e DEEPL_DL_SESSION=your-session-token \
-  xiaoxiaofeihh/deeplx-pro:latest
+  -e API_KEY=change-me \
+  ghcr.io/xiaozhou26/deeplx-pro:latest
 ```
 
 ### Docker Compose
@@ -79,7 +64,7 @@ docker run -d \
 ```yaml
 services:
   deeplx-pro:
-    image: xiaoxiaofeihh/deeplx-pro:latest
+    image: ghcr.io/xiaozhou26/deeplx-pro:latest
     container_name: deeplx-pro
     restart: unless-stopped
     ports:
@@ -88,7 +73,7 @@ services:
       HOST: 0.0.0.0
       PORT: 9000
       # PROXY_LIST: socks5h://host.docker.internal:1080
-      # DEEPL_DL_SESSION: your-session-token
+      # API_KEY: change-me
 ```
 
 启动并检查状态：
@@ -118,7 +103,7 @@ Release 页面：<https://github.com/xiaozhou26/deeplx-pro/releases>
 ### Linux
 
 ```bash
-VERSION=v1.1.0
+VERSION=v1.1.1
 curl -LO "https://github.com/xiaozhou26/deeplx-pro/releases/download/${VERSION}/deeplx-pro-linux-amd64.tar.gz"
 tar -xzf deeplx-pro-linux-amd64.tar.gz
 chmod +x deeplx-pro
@@ -128,7 +113,7 @@ HOST=0.0.0.0 PORT=9000 ./deeplx-pro
 ### Windows PowerShell
 
 ```powershell
-$Version = "v1.1.0"
+$Version = "v1.1.1"
 Invoke-WebRequest `
   -Uri "https://github.com/xiaozhou26/deeplx-pro/releases/download/$Version/deeplx-pro-windows-amd64.zip" `
   -OutFile "deeplx-pro-windows-amd64.zip"
@@ -178,7 +163,22 @@ cargo run --release
 | `HOST` | 服务监听地址 | `127.0.0.1` |
 | `PORT` | 服务监听端口 | `9000` |
 | `PROXY_LIST` | 出站代理 URL | 空，直接连接 |
-| `DEEPL_DL_SESSION` | DeepL Pro 会话 token；非空时启用 Pro 端点 | 空，使用免费端点 |
+| `API_KEY` | 可选服务端鉴权密钥；只保护两个翻译接口 | 空，不启用鉴权 |
+
+### API 鉴权
+
+设置 `API_KEY` 后，`POST /translate` 和 `POST /v2/translate` 必须携带密钥。`GET /health` 与 `GET /v2/languages` 保持公开，方便探活和语言查询。
+
+以下三种请求头均受支持：
+
+```bash
+curl http://127.0.0.1:9000/v2/translate \
+  -H 'Authorization: DeepL-Auth-Key change-me' \
+  -H 'Content-Type: application/json' \
+  -d '{"text":"Hello","target_lang":"ZH"}'
+```
+
+也可以使用 `Authorization: Bearer change-me` 或 `X-API-Key: change-me`。
 
 代理 URL 支持：
 

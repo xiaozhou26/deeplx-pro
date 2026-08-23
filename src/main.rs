@@ -1,6 +1,8 @@
 use axum::{
-    extract::{Query, State},
-    http::StatusCode,
+    extract::{Query, Request, State},
+    http::{header::AUTHORIZATION, HeaderName, StatusCode},
+    middleware::{self, Next},
+    response::Response,
     routing::{get, post},
     Json, Router,
 };
@@ -8,7 +10,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use axum::http::HeaderName;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::set_header::SetResponseHeaderLayer;
 use wreq::Client;
@@ -19,7 +20,6 @@ use wreq_util::Emulation;
 // ═══════════════════════════════════════════════════════════════
 
 const ONESHOT_FREE: &str = "https://oneshot-free.www.deepl.com/v1/translate";
-const ONESHOT_PRO: &str = "https://oneshot-pro.www.deepl.com/v1/translate";
 const MAX_TEXT_LENGTH: usize = 1500;
 
 // ═══════════════════════════════════════════════════════════════
@@ -27,52 +27,232 @@ const MAX_TEXT_LENGTH: usize = 1500;
 // ═══════════════════════════════════════════════════════════════
 
 struct LangInfo {
-    code: &'static str,      // canonical ISO-ish code (uppercase)
-    name: &'static str,      // English display name (matches DeepL's official naming)
-    internal: &'static str,  // DeepL internal lowercase code
-    formality: bool,         // whether DeepL supports formality for this target
+    code: &'static str,     // canonical ISO-ish code (uppercase)
+    name: &'static str,     // English display name (matches DeepL's official naming)
+    internal: &'static str, // DeepL internal lowercase code
+    formality: bool,        // whether DeepL supports formality for this target
 }
 
 /// Languages supported by DeepL text translation.
 /// `formality` is true for the languages DeepL documents as supporting
 /// the formality parameter: DE, FR, IT, ES, ES-419, NL, PL, PT-BR, PT-PT, RU, JA.
 static LANGUAGES: &[LangInfo] = &[
-    LangInfo { code: "AR",      name: "Arabic",                   internal: "ar",      formality: false },
-    LangInfo { code: "BG",      name: "Bulgarian",                internal: "bg",      formality: false },
-    LangInfo { code: "CS",      name: "Czech",                    internal: "cs",      formality: false },
-    LangInfo { code: "DA",      name: "Danish",                   internal: "da",      formality: false },
-    LangInfo { code: "DE",      name: "German",                   internal: "de",      formality: true  },
-    LangInfo { code: "EL",      name: "Greek",                    internal: "el",      formality: false },
-    LangInfo { code: "EN-GB",   name: "English (British)",        internal: "en-GB",   formality: false },
-    LangInfo { code: "EN-US",   name: "English (American)",       internal: "en-US",   formality: false },
-    LangInfo { code: "ES",      name: "Spanish",                  internal: "es",      formality: true  },
-    LangInfo { code: "ES-419",  name: "Spanish (Latin American)", internal: "es-419",  formality: true  },
-    LangInfo { code: "ET",      name: "Estonian",                 internal: "et",      formality: false },
-    LangInfo { code: "FI",      name: "Finnish",                  internal: "fi",      formality: false },
-    LangInfo { code: "FR",      name: "French",                   internal: "fr",      formality: true  },
-    LangInfo { code: "HE",      name: "Hebrew",                   internal: "he",      formality: false },
-    LangInfo { code: "HU",      name: "Hungarian",                internal: "hu",      formality: false },
-    LangInfo { code: "ID",      name: "Indonesian",               internal: "id",      formality: false },
-    LangInfo { code: "IT",      name: "Italian",                  internal: "it",      formality: true  },
-    LangInfo { code: "JA",      name: "Japanese",                 internal: "ja",      formality: true  },
-    LangInfo { code: "KO",      name: "Korean",                   internal: "ko",      formality: false },
-    LangInfo { code: "LT",      name: "Lithuanian",               internal: "lt",      formality: false },
-    LangInfo { code: "LV",      name: "Latvian",                  internal: "lv",      formality: false },
-    LangInfo { code: "NB",      name: "Norwegian (Bokmål)",       internal: "nb",      formality: false },
-    LangInfo { code: "NL",      name: "Dutch",                    internal: "nl",      formality: true  },
-    LangInfo { code: "PL",      name: "Polish",                   internal: "pl",      formality: true  },
-    LangInfo { code: "PT-BR",   name: "Portuguese (Brazilian)",   internal: "pt-BR",   formality: true  },
-    LangInfo { code: "PT-PT",   name: "Portuguese (European)",    internal: "pt-PT",   formality: true  },
-    LangInfo { code: "RO",      name: "Romanian",                 internal: "ro",      formality: false },
-    LangInfo { code: "RU",      name: "Russian",                  internal: "ru",      formality: true  },
-    LangInfo { code: "SK",      name: "Slovak",                   internal: "sk",      formality: false },
-    LangInfo { code: "SL",      name: "Slovenian",                internal: "sl",      formality: false },
-    LangInfo { code: "SV",      name: "Swedish",                  internal: "sv",      formality: false },
-    LangInfo { code: "TR",      name: "Turkish",                  internal: "tr",      formality: false },
-    LangInfo { code: "UK",      name: "Ukrainian",                internal: "uk",      formality: false },
-    LangInfo { code: "VI",      name: "Vietnamese",               internal: "vi",      formality: false },
-    LangInfo { code: "ZH-HANS", name: "Chinese (Simplified)",     internal: "zh-Hans", formality: false },
-    LangInfo { code: "ZH-HANT", name: "Chinese (Traditional)",    internal: "zh-Hant", formality: false },
+    LangInfo {
+        code: "AR",
+        name: "Arabic",
+        internal: "ar",
+        formality: false,
+    },
+    LangInfo {
+        code: "BG",
+        name: "Bulgarian",
+        internal: "bg",
+        formality: false,
+    },
+    LangInfo {
+        code: "CS",
+        name: "Czech",
+        internal: "cs",
+        formality: false,
+    },
+    LangInfo {
+        code: "DA",
+        name: "Danish",
+        internal: "da",
+        formality: false,
+    },
+    LangInfo {
+        code: "DE",
+        name: "German",
+        internal: "de",
+        formality: true,
+    },
+    LangInfo {
+        code: "EL",
+        name: "Greek",
+        internal: "el",
+        formality: false,
+    },
+    LangInfo {
+        code: "EN-GB",
+        name: "English (British)",
+        internal: "en-GB",
+        formality: false,
+    },
+    LangInfo {
+        code: "EN-US",
+        name: "English (American)",
+        internal: "en-US",
+        formality: false,
+    },
+    LangInfo {
+        code: "ES",
+        name: "Spanish",
+        internal: "es",
+        formality: true,
+    },
+    LangInfo {
+        code: "ES-419",
+        name: "Spanish (Latin American)",
+        internal: "es-419",
+        formality: true,
+    },
+    LangInfo {
+        code: "ET",
+        name: "Estonian",
+        internal: "et",
+        formality: false,
+    },
+    LangInfo {
+        code: "FI",
+        name: "Finnish",
+        internal: "fi",
+        formality: false,
+    },
+    LangInfo {
+        code: "FR",
+        name: "French",
+        internal: "fr",
+        formality: true,
+    },
+    LangInfo {
+        code: "HE",
+        name: "Hebrew",
+        internal: "he",
+        formality: false,
+    },
+    LangInfo {
+        code: "HU",
+        name: "Hungarian",
+        internal: "hu",
+        formality: false,
+    },
+    LangInfo {
+        code: "ID",
+        name: "Indonesian",
+        internal: "id",
+        formality: false,
+    },
+    LangInfo {
+        code: "IT",
+        name: "Italian",
+        internal: "it",
+        formality: true,
+    },
+    LangInfo {
+        code: "JA",
+        name: "Japanese",
+        internal: "ja",
+        formality: true,
+    },
+    LangInfo {
+        code: "KO",
+        name: "Korean",
+        internal: "ko",
+        formality: false,
+    },
+    LangInfo {
+        code: "LT",
+        name: "Lithuanian",
+        internal: "lt",
+        formality: false,
+    },
+    LangInfo {
+        code: "LV",
+        name: "Latvian",
+        internal: "lv",
+        formality: false,
+    },
+    LangInfo {
+        code: "NB",
+        name: "Norwegian (Bokmål)",
+        internal: "nb",
+        formality: false,
+    },
+    LangInfo {
+        code: "NL",
+        name: "Dutch",
+        internal: "nl",
+        formality: true,
+    },
+    LangInfo {
+        code: "PL",
+        name: "Polish",
+        internal: "pl",
+        formality: true,
+    },
+    LangInfo {
+        code: "PT-BR",
+        name: "Portuguese (Brazilian)",
+        internal: "pt-BR",
+        formality: true,
+    },
+    LangInfo {
+        code: "PT-PT",
+        name: "Portuguese (European)",
+        internal: "pt-PT",
+        formality: true,
+    },
+    LangInfo {
+        code: "RO",
+        name: "Romanian",
+        internal: "ro",
+        formality: false,
+    },
+    LangInfo {
+        code: "RU",
+        name: "Russian",
+        internal: "ru",
+        formality: true,
+    },
+    LangInfo {
+        code: "SK",
+        name: "Slovak",
+        internal: "sk",
+        formality: false,
+    },
+    LangInfo {
+        code: "SL",
+        name: "Slovenian",
+        internal: "sl",
+        formality: false,
+    },
+    LangInfo {
+        code: "SV",
+        name: "Swedish",
+        internal: "sv",
+        formality: false,
+    },
+    LangInfo {
+        code: "TR",
+        name: "Turkish",
+        internal: "tr",
+        formality: false,
+    },
+    LangInfo {
+        code: "UK",
+        name: "Ukrainian",
+        internal: "uk",
+        formality: false,
+    },
+    LangInfo {
+        code: "VI",
+        name: "Vietnamese",
+        internal: "vi",
+        formality: false,
+    },
+    LangInfo {
+        code: "ZH-HANS",
+        name: "Chinese (Simplified)",
+        internal: "zh-Hans",
+        formality: false,
+    },
+    LangInfo {
+        code: "ZH-HANT",
+        name: "Chinese (Traditional)",
+        internal: "zh-Hant",
+        formality: false,
+    },
 ];
 
 /// Find a language entry by (normalized) input code. Handles common aliases:
@@ -123,8 +303,7 @@ fn new_instance_id() -> String {
     )
 }
 
-static INSTANCE_ID: std::sync::LazyLock<String> =
-    std::sync::LazyLock::new(new_instance_id);
+static INSTANCE_ID: std::sync::LazyLock<String> = std::sync::LazyLock::new(new_instance_id);
 
 // ═══════════════════════════════════════════════════════════════
 //  Text chunking
@@ -156,8 +335,8 @@ fn find_boundary(chars: &[char], start: usize, limit: usize) -> Boundary {
     let end_exclusive = limit.min(chars.len());
 
     let mut best_newline_newline: Option<usize> = None; // after the 2nd \n of \n\n
-    let mut best_newline: Option<usize> = None;          // after a single \n
-    let mut best_sentence: Option<usize> = None;         // after a sentence punct
+    let mut best_newline: Option<usize> = None; // after a single \n
+    let mut best_sentence: Option<usize> = None; // after a sentence punct
 
     let mut i = start;
     while i < end_exclusive {
@@ -386,14 +565,10 @@ struct HealthResponse {
 
 struct DeepLClient {
     client: Client,
-    dl_session: Option<String>,
 }
 
 impl DeepLClient {
-    async fn new(
-        proxy: Option<String>,
-        dl_session: Option<String>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    async fn new(proxy: Option<String>) -> Result<Self, Box<dyn std::error::Error>> {
         let builder = Client::builder()
             .emulation(Emulation::Chrome130)
             .cookie_store(true)
@@ -402,8 +577,10 @@ impl DeepLClient {
 
         let builder = if let Some(ref p) = proxy {
             if !p.is_empty() {
-                if p.starts_with("socks5h://") || p.starts_with("socks5://")
-                    || p.starts_with("socks4a://") || p.starts_with("socks4://")
+                if p.starts_with("socks5h://")
+                    || p.starts_with("socks5://")
+                    || p.starts_with("socks4a://")
+                    || p.starts_with("socks4://")
                 {
                     // SOCKS proxies handle all traffic (HTTP + HTTPS)
                     builder.proxy(wreq::Proxy::all(p)?)
@@ -423,10 +600,7 @@ impl DeepLClient {
         };
 
         let client = builder.build()?;
-        let deepl = DeepLClient {
-            client,
-            dl_session,
-        };
+        let deepl = DeepLClient { client };
 
         deepl.warmup_cookies().await?;
         Ok(deepl)
@@ -470,16 +644,8 @@ impl DeepLClient {
             Err(e) => return Err(TranslateError::Client(format!("source_lang: {}", e))),
         };
 
-        let endpoint = if self.dl_session.is_some() {
-            ONESHOT_PRO
-        } else {
-            ONESHOT_FREE
-        };
-
-        let auth_value = match &self.dl_session {
-            Some(s) => format!("Bearer {}", s),
-            None => "None".to_string(),
-        };
+        let endpoint = ONESHOT_FREE;
+        let auth_value = "None";
 
         let body = OneshotRequest {
             text: vec![text.to_string()],
@@ -498,8 +664,11 @@ impl DeepLClient {
         let resp = match self
             .client
             .post(endpoint)
-            .header("Authorization", &auth_value)
-            .header("Origin", "chrome-extension://cofdbpoegempjloogbagkncekinflcnj")
+            .header("Authorization", auth_value)
+            .header(
+                "Origin",
+                "chrome-extension://cofdbpoegempjloogbagkncekinflcnj",
+            )
             .header("Accept", "*/*")
             .header("Accept-Encoding", "gzip, deflate, br")
             .header("Sec-Fetch-Site", "cross-site")
@@ -526,19 +695,28 @@ impl DeepLClient {
         }
         if !status.is_success() {
             let body_str = String::from_utf8_lossy(&body_bytes);
-            return Err(TranslateError::Upstream(format!("HTTP {}: {}", status, body_str)));
+            return Err(TranslateError::Upstream(format!(
+                "HTTP {}: {}",
+                status, body_str
+            )));
         }
 
         let result: OneshotResponse = serde_json::from_slice(&body_bytes)
             .map_err(|e| TranslateError::Upstream(format!("json parse: {}", e)))?;
 
         if result.translations.is_empty() {
-            return Err(TranslateError::Upstream("no translations in response".to_string()));
+            return Err(TranslateError::Upstream(
+                "no translations in response".to_string(),
+            ));
         }
 
         let translated = result.translations[0].text.clone();
         let detected = result.translations[0].detected_source_language.clone();
-        let detected = if detected.is_empty() { None } else { Some(detected) };
+        let detected = if detected.is_empty() {
+            None
+        } else {
+            Some(detected)
+        };
 
         Ok((translated, detected))
     }
@@ -578,7 +756,9 @@ impl DeepLClient {
         target_lang: &str,
     ) -> Result<(String, Option<String>), TranslateError> {
         if count_chars(text) <= MAX_TEXT_LENGTH {
-            return self.translate_with_retry(text, source_lang, target_lang).await;
+            return self
+                .translate_with_retry(text, source_lang, target_lang)
+                .await;
         }
 
         let chunks = chunk_text(text, MAX_TEXT_LENGTH);
@@ -590,7 +770,9 @@ impl DeepLClient {
         let mut detected: Option<String> = None;
 
         for chunk in &chunks {
-            let (part, det) = self.translate_with_retry(chunk, source_lang, target_lang).await?;
+            let (part, det) = self
+                .translate_with_retry(chunk, source_lang, target_lang)
+                .await?;
             if detected.is_none() {
                 detected = det;
             }
@@ -610,7 +792,10 @@ impl DeepLClient {
     ) -> Result<Vec<(String, Option<String>)>, TranslateError> {
         let mut results = Vec::with_capacity(texts.len());
         for text in texts {
-            results.push(self.translate_chunked(text, source_lang, target_lang).await?);
+            results.push(
+                self.translate_chunked(text, source_lang, target_lang)
+                    .await?,
+            );
         }
         Ok(results)
     }
@@ -639,10 +824,13 @@ fn err_to_response(err: TranslateError) -> (StatusCode, Json<ErrorResponse>) {
             }
         }
     };
-    (status, Json(ErrorResponse {
-        code: status.as_u16(),
-        message: err.to_string(),
-    }))
+    (
+        status,
+        Json(ErrorResponse {
+            code: status.as_u16(),
+            message: err.to_string(),
+        }),
+    )
 }
 
 async fn handle_translate(
@@ -700,9 +888,7 @@ async fn handle_v2_translate(
     Ok(Json(OfficialTranslateResponse { translations }))
 }
 
-async fn handle_v2_languages(
-    Query(q): Query<LanguagesQuery>,
-) -> Json<Vec<LanguageEntry>> {
+async fn handle_v2_languages(Query(q): Query<LanguagesQuery>) -> Json<Vec<LanguageEntry>> {
     // "source" only omits supports_formality; everything else (including the
     // default and unknown values) behaves like "target".
     let is_source = q.lang_type.eq_ignore_ascii_case("source");
@@ -723,31 +909,57 @@ async fn handle_health() -> Json<HealthResponse> {
     Json(HealthResponse { status: "ok" })
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  Main
-// ═══════════════════════════════════════════════════════════════
+fn extract_api_key(request: &Request) -> Option<&str> {
+    if let Some(value) = request.headers().get(AUTHORIZATION) {
+        if let Ok(value) = value.to_str() {
+            let value = value.trim();
+            if let Some(token) = value
+                .strip_prefix("Bearer ")
+                .or_else(|| value.strip_prefix("DeepL-Auth-Key "))
+            {
+                return Some(token.trim());
+            }
+            return Some(value);
+        }
+    }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let _ = dotenvy::dotenv(); // load .env file if present
+    request
+        .headers()
+        .get("x-api-key")
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+}
 
-    let proxy = std::env::var("PROXY_LIST").ok();
-    let dl_session = std::env::var("DEEPL_DL_SESSION")
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty());
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("PORT").unwrap_or_else(|_| "9000".to_string());
-    let addr = format!("{}:{}", host, port);
+async fn require_api_key(
+    State(api_key): State<Arc<str>>,
+    request: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<ErrorResponse>)> {
+    if extract_api_key(&request) == Some(api_key.as_ref()) {
+        Ok(next.run(request).await)
+    } else {
+        Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                code: StatusCode::UNAUTHORIZED.as_u16(),
+                message: "invalid or missing API key".to_string(),
+            }),
+        ))
+    }
+}
 
-    let endpoint_label = if dl_session.is_some() { "Pro" } else { "Free" };
-    println!("[*] Initializing DeepL client ({} endpoint)...", endpoint_label);
-    let client = DeepLClient::new(proxy, dl_session).await?;
-    println!("[*] Client ready (cookies warmed)");
-    println!("[*] Listening on {}", addr);
+fn build_router(state: AppState, api_key: Option<String>) -> Router {
+    let protected = Router::new()
+        .route("/translate", post(handle_translate))
+        .route("/v2/translate", post(handle_v2_translate));
 
-    let state = AppState {
-        client: Arc::new(client),
+    let protected = if let Some(api_key) = api_key.filter(|key| !key.is_empty()) {
+        protected.route_layer(middleware::from_fn_with_state(
+            Arc::<str>::from(api_key),
+            require_api_key,
+        ))
+    } else {
+        protected
     };
 
     let referrer = SetResponseHeaderLayer::appending(
@@ -760,17 +972,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let app = Router::new()
-        // Legacy convenience endpoint (single text, custom response shape).
-        .route("/translate", post(handle_translate))
-        // DeepL official-API-compatible endpoints.
-        .route("/v2/translate", post(handle_v2_translate))
+    Router::new()
+        .merge(protected)
         .route("/v2/languages", get(handle_v2_languages))
-        // Liveness probe.
         .route("/health", get(handle_health))
         .layer(referrer)
         .layer(cors)
-        .with_state(state);
+        .with_state(state)
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Main
+// ═══════════════════════════════════════════════════════════════
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let _ = dotenvy::dotenv(); // load .env file if present
+
+    let proxy = std::env::var("PROXY_LIST").ok();
+    let api_key = std::env::var("API_KEY")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "9000".to_string());
+    let addr = format!("{}:{}", host, port);
+
+    println!("[*] Initializing DeepL extension client...");
+    let client = DeepLClient::new(proxy).await?;
+    println!("[*] Client ready (cookies warmed)");
+    println!("[*] Listening on {}", addr);
+
+    let state = AppState {
+        client: Arc::new(client),
+    };
+
+    let app = build_router(state, api_key);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
@@ -785,9 +1022,98 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::{body::Body, http::Request};
+    use tower::ServiceExt;
 
     fn count(s: &str) -> usize {
         s.chars().count()
+    }
+
+    #[test]
+    fn api_key_extraction_supports_common_clients() {
+        let bearer = Request::builder()
+            .header(AUTHORIZATION, "Bearer secret")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(extract_api_key(&bearer), Some("secret"));
+
+        let deepl = Request::builder()
+            .header(AUTHORIZATION, "DeepL-Auth-Key secret")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(extract_api_key(&deepl), Some("secret"));
+
+        let api_key = Request::builder()
+            .header("x-api-key", "secret")
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(extract_api_key(&api_key), Some("secret"));
+    }
+
+    fn auth_test_router() -> Router {
+        let client = DeepLClient {
+            client: Client::builder().build().unwrap(),
+        };
+        build_router(
+            AppState {
+                client: Arc::new(client),
+            },
+            Some("secret".to_string()),
+        )
+    }
+
+    #[tokio::test]
+    async fn protected_route_rejects_missing_api_key_before_upstream_call() {
+        let response = auth_test_router()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/translate")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        r#"{"text":"Hello","source_lang":"EN","target_lang":"ZH"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn health_route_stays_public_when_api_key_is_enabled() {
+        let response = auth_test_router()
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn protected_route_accepts_api_key_and_reaches_request_validation() {
+        let response = auth_test_router()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/v2/translate")
+                    .header("content-type", "application/json")
+                    .header(AUTHORIZATION, "DeepL-Auth-Key secret")
+                    .body(Body::from(
+                        r#"{"text":[],"source_lang":"EN","target_lang":"ZH"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]
@@ -905,7 +1231,9 @@ mod tests {
             .filter(|l| l.formality)
             .map(|l| l.code)
             .collect();
-        for expected in ["DE", "FR", "IT", "ES", "ES-419", "NL", "PL", "PT-BR", "PT-PT", "RU", "JA"] {
+        for expected in [
+            "DE", "FR", "IT", "ES", "ES-419", "NL", "PL", "PT-BR", "PT-PT", "RU", "JA",
+        ] {
             assert!(
                 formality_true.contains(&expected),
                 "{} should support formality",
