@@ -21,7 +21,7 @@ DeepL 非官方翻译 API。项目模拟 DeepL Chrome 扩展的内部翻译请�
 
 镜像会同时发布到 Docker Hub 和 GitHub Container Registry（GHCR）：
 
-- `xiaozhou26/deeplx-pro:latest`
+- `xiaoxiaofeihh/deeplx-pro:latest`
 - `ghcr.io/xiaozhou26/deeplx-pro:latest`
 
 支持 `linux/amd64` 和 `linux/arm64`。
@@ -29,13 +29,13 @@ DeepL 非官方翻译 API。项目模拟 DeepL Chrome 扩展的内部翻译请�
 ### Docker Hub
 
 ```bash
-docker pull xiaozhou26/deeplx-pro:latest
+docker pull xiaoxiaofeihh/deeplx-pro:latest
 
 docker run -d \
   --name deeplx-pro \
   --restart unless-stopped \
   -p 9000:9000 \
-  xiaozhou26/deeplx-pro:latest
+  xiaoxiaofeihh/deeplx-pro:latest
 ```
 
 ### GitHub Container Registry
@@ -60,7 +60,7 @@ docker run -d \
   --restart unless-stopped \
   -p 9000:9000 \
   -e PROXY_LIST=socks5h://host.docker.internal:1080 \
-  xiaozhou26/deeplx-pro:latest
+  xiaoxiaofeihh/deeplx-pro:latest
 ```
 
 ### 使用 DeepL Pro 会话
@@ -71,7 +71,7 @@ docker run -d \
   --restart unless-stopped \
   -p 9000:9000 \
   -e DEEPL_DL_SESSION=your-session-token \
-  xiaozhou26/deeplx-pro:latest
+  xiaoxiaofeihh/deeplx-pro:latest
 ```
 
 ### Docker Compose
@@ -79,7 +79,7 @@ docker run -d \
 ```yaml
 services:
   deeplx-pro:
-    image: xiaozhou26/deeplx-pro:latest
+    image: xiaoxiaofeihh/deeplx-pro:latest
     container_name: deeplx-pro
     restart: unless-stopped
     ports:
